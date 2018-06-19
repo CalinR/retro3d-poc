@@ -3,42 +3,90 @@ const context = canvas.getContext('2d');
 const sector = {
   walls: [
     {
+      id: 1,
       start: {
-        x: 100,
+        x: 150,
         y: 100
       },
       end: {
-        x: 400,
+        x: 300,
         y: 100
       }
     },
     {
+      id: 2,
       start: {
-        x: 400,
+        x: 300,
         y: 100
       },
       end: {
-        x: 400,
-        y: 400
+        x: 350,
+        y: 150
       }
     },
     {
+      id: 3,
       start: {
-        x: 400,
-        y: 400
+        x: 350,
+        y: 150
       },
       end: {
-        x: 100,
-        y: 400
+        x: 350,
+        y: 300
       }
     },
     {
+      id: 4,
       start: {
-        x: 100,
-        y: 400
+        x: 350,
+        y: 300
+      },
+      end: {
+        x: 300,
+        y: 350
+      }
+    },
+    {
+      id: 5,
+      start: {
+        x: 300,
+        y: 350
+      },
+      end: {
+        x: 150,
+        y: 350
+      }
+    },
+    {
+      id: 6,
+      start: {
+        x: 150,
+        y: 350
       },
       end: {
         x: 100,
+        y: 300
+      }
+    },
+    {
+      id: 7,
+      start: {
+        x: 100,
+        y: 300
+      },
+      end: {
+        x: 100,
+        y: 150
+      }
+    },
+    {
+      id: 8,
+      start: {
+        x: 100,
+        y: 150
+      },
+      end: {
+        x: 150,
         y: 100
       }
     }
@@ -47,6 +95,7 @@ const sector = {
 const player = {
   x: 200,
   y: 200,
+  radius: 10,
   rotation: 180,
   moveSpeed: 1,
   turnSpeed: 90,
@@ -198,6 +247,28 @@ const updateTime = () => {
   lastTime = currentTime; 
 }
 
+const dotProduct = (vector1, vector2) => {
+  return vector1.x * vector2.x + vector1.y * vector2.y;
+}
+
+function sqrMagnitude(vector){
+  return vector.x * vector.x + vector.y * vector.y;
+}
+
+function getDistance(vector1, vector2){
+  const a = Math.max(vector1.x, vector2.x) - Math.min(vector1.x, vector2.x);
+  const b = Math.max(vector1.y, vector2.y) - Math.min(vector1.y, vector2.y);
+  return Math.sqrt(a * a + b * b);
+}
+
+function normalize(vector){
+  var length = Math.sqrt(vector.x * vector.x + vector.y * vector.y)
+  return {
+    x: vector.x / length,
+    y: vector.y / length
+  }
+}
+
 /*==================================================
 # PHYSICS
 ==================================================*/
@@ -219,6 +290,45 @@ const friction = () => {
 /*==================================================
 # PLAYER
 ==================================================*/
+const checkPlayerCollisions = () => {
+  sector.walls.forEach((wall) => {
+    /* The wall distance code can be optimized */
+    const vector1 = {
+      x: player.x - wall.start.x,
+      y: player.y - wall.start.y
+    }
+    const vector2 = {
+      x: wall.end.x - wall.start.x,
+      y: wall.end.y - wall.start.y
+    }
+    const dot = dotProduct(vector1, vector2);
+    const magnitude = sqrMagnitude(vector2);
+    const projection = {
+      x: wall.start.x + ((dot * vector2.x) / magnitude),
+      y: wall.start.y + ((dot * vector2.y) / magnitude)
+    }
+    const distance = getDistance({ x: player.x, y: player.y}, projection);
+
+    if(distance < player.radius){
+      const dx = wall.end.x - wall.start.x;
+      const dy = wall.end.y - wall.start.y;
+      const normalized = normalize({ x: dx, y: dy });
+      player.x = projection.x + player.radius * -normalized.y;
+      player.y = projection.y + player.radius * normalized.x;
+    }
+
+    context.beginPath();
+    context.fillStyle = 'green';
+    context.arc(projection.x, projection.y, 4, 0, Math.PI * 2);
+    context.fill();
+    context.closePath();
+  })
+
+  if(player.x < 100){
+    player.x = 100;
+  }
+}
+
 const updatePlayer = () => {
   if(key.down[keys.up]){
     player.velocity.y = Math.max(-player.maxSpeed, player.velocity.y - player.moveSpeed * deltaTime);
@@ -237,8 +347,10 @@ const updatePlayer = () => {
     player.rotation = player.rotation + player.turnSpeed * deltaTime;
   }
 
-  var radians = toRadians(player.rotation);
-  var move = {
+  checkPlayerCollisions();
+
+  const radians = toRadians(player.rotation);
+  const move = {
     x: Math.cos(radians) * player.velocity.y,
     y: Math.sin(radians) * player.velocity.y
   }
@@ -259,6 +371,14 @@ const drawPlayer = () => {
   context.fillStyle = 'black';
   context.arc(player.x, player.y, 3, 0, Math.PI * 2);
   context.fill();
+  context.closePath();
+}
+
+const drawPlayerCollisionRadius = () => {
+  context.beginPath();
+  context.strokeStyle = 'red';
+  context.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+  context.stroke();
   context.closePath();
 }
 
@@ -283,6 +403,7 @@ const mainLoop = () => {
   updateKeyboard();
   updatePlayer();
   drawPlayer();
+  drawPlayerCollisionRadius();
   drawSectors();
   window.requestAnimationFrame(mainLoop);
 }
