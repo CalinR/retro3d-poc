@@ -1,110 +1,59 @@
+import Vector from './Vector';
 const canvas = document.getElementById('canvas');
 const context = canvas.getContext('2d');
 const sector = {
   walls: [
     {
       id: 1,
-      start: {
-        x: 150,
-        y: 100
-      },
-      end: {
-        x: 300,
-        y: 100
-      }
+      start: new Vector(150, 100),
+      end: new Vector(300, 100)
     },
     {
       id: 2,
-      start: {
-        x: 300,
-        y: 100
-      },
-      end: {
-        x: 350,
-        y: 150
-      }
+      start: new Vector(300, 100),
+      end: new Vector(350, 150)
     },
     {
       id: 3,
-      start: {
-        x: 350,
-        y: 150
-      },
-      end: {
-        x: 350,
-        y: 300
-      }
+      start: new Vector(350, 150),
+      end: new Vector(350, 300)
     },
     {
       id: 4,
-      start: {
-        x: 350,
-        y: 300
-      },
-      end: {
-        x: 300,
-        y: 350
-      }
+      start: new Vector(350, 300),
+      end: new Vector(300, 350)
     },
     {
       id: 5,
-      start: {
-        x: 300,
-        y: 350
-      },
-      end: {
-        x: 150,
-        y: 350
-      }
+      start: new Vector(300, 350),
+      end: new Vector(150, 350)
     },
     {
       id: 6,
-      start: {
-        x: 150,
-        y: 350
-      },
-      end: {
-        x: 100,
-        y: 300
-      }
+      start: new Vector(150, 350),
+      end: new Vector(100, 300)
     },
     {
       id: 7,
-      start: {
-        x: 100,
-        y: 300
-      },
-      end: {
-        x: 100,
-        y: 150
-      }
+      start: new Vector(100, 300),
+      end: new Vector(100, 150)
     },
     {
       id: 8,
-      start: {
-        x: 100,
-        y: 150
-      },
-      end: {
-        x: 150,
-        y: 100
-      }
+      start: new Vector(100, 150),
+      end: new Vector(150, 100)
     }
   ]
 }
 const player = {
-  x: 200,
-  y: 200,
+  position: new Vector(200, 200),
   radius: 10,
   rotation: 180,
   moveSpeed: 1,
   turnSpeed: 90,
   maxSpeed: 1,
   friction: 2,
-  velocity: {
-    x: 0,
-    y: 0
-  }
+  velocity: new Vector(0, 0)
 }
 const keys = {
   backspace:      8,
@@ -247,28 +196,6 @@ const updateTime = () => {
   lastTime = currentTime; 
 }
 
-const dotProduct = (vector1, vector2) => {
-  return vector1.x * vector2.x + vector1.y * vector2.y;
-}
-
-function sqrMagnitude(vector){
-  return vector.x * vector.x + vector.y * vector.y;
-}
-
-function getDistance(vector1, vector2){
-  const a = Math.max(vector1.x, vector2.x) - Math.min(vector1.x, vector2.x);
-  const b = Math.max(vector1.y, vector2.y) - Math.min(vector1.y, vector2.y);
-  return Math.sqrt(a * a + b * b);
-}
-
-function normalize(vector){
-  var length = Math.sqrt(vector.x * vector.x + vector.y * vector.y)
-  return {
-    x: vector.x / length,
-    y: vector.y / length
-  }
-}
-
 /*==================================================
 # PHYSICS
 ==================================================*/
@@ -291,42 +218,36 @@ const friction = () => {
 # PLAYER
 ==================================================*/
 const checkPlayerCollisions = () => {
-  sector.walls.forEach((wall) => {
-    /* The wall distance code can be optimized */
-    const vector1 = {
-      x: player.x - wall.start.x,
-      y: player.y - wall.start.y
-    }
-    const vector2 = {
-      x: wall.end.x - wall.start.x,
-      y: wall.end.y - wall.start.y
-    }
-    const dot = dotProduct(vector1, vector2);
-    const magnitude = sqrMagnitude(vector2);
-    const projection = {
-      x: wall.start.x + ((dot * vector2.x) / magnitude),
-      y: wall.start.y + ((dot * vector2.y) / magnitude)
-    }
-    const distance = getDistance({ x: player.x, y: player.y}, projection);
+  const point = new Vector();
 
-    if(distance < player.radius){
-      const dx = wall.end.x - wall.start.x;
-      const dy = wall.end.y - wall.start.y;
-      const normalized = normalize({ x: dx, y: dy });
-      player.x = projection.x + player.radius * -normalized.y;
-      player.y = projection.y + player.radius * normalized.x;
-    }
+  sector.walls.forEach(wall => {
+    const l2 = Vector.distance(wall.start, wall.end);
+    const vector1 = player.position.minus(wall.start);
+    const vector2 = wall.end.minus(wall.start);
+
+    // Adds vector1 and vector2 together and then divides by the magnitude of the line to get the percent difference. You can then use that number and multiply it by the length of the line to get the projection.
+    const t = Math.max(0, Math.min(1, Vector.dot(vector1, vector2) / l2));
+    const projection = new Vector(
+      wall.start.x + t * vector2.x,
+      wall.start.y + t * vector2.y
+    )
 
     context.beginPath();
-    context.fillStyle = 'green';
+    context.fillStyle = 'red';
     context.arc(projection.x, projection.y, 4, 0, Math.PI * 2);
     context.fill();
     context.closePath();
-  })
 
-  if(player.x < 100){
-    player.x = 100;
-  }
+    const distance = Math.sqrt(Vector.distance(player.position, projection));
+
+    if(distance < player.radius){
+      const magnitude = Math.sqrt(l2);
+      const delta = wall.end.minus(wall.start);
+      const normal = new Vector(delta.x / magnitude, delta.y / magnitude);
+      player.position.x = projection.x + player.radius * -normal.y;
+      player.position.y = projection.y + player.radius * normal.x;
+    }
+  })
 }
 
 const updatePlayer = () => {
@@ -355,8 +276,8 @@ const updatePlayer = () => {
     y: Math.sin(radians) * player.velocity.y
   }
 
-  player.x += move.x;
-  player.y += move.y;
+  player.position.x += move.x;
+  player.position.y += move.y;
 }
 
 /*==================================================
@@ -369,7 +290,7 @@ const clearCanvas = () => {
 const drawPlayer = () => {
   context.beginPath();
   context.fillStyle = 'black';
-  context.arc(player.x, player.y, 3, 0, Math.PI * 2);
+  context.arc(player.position.x, player.position.y, 3, 0, Math.PI * 2);
   context.fill();
   context.closePath();
 }
@@ -377,7 +298,7 @@ const drawPlayer = () => {
 const drawPlayerCollisionRadius = () => {
   context.beginPath();
   context.strokeStyle = 'red';
-  context.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+  context.arc(player.position.x, player.position.y, player.radius, 0, Math.PI * 2);
   context.stroke();
   context.closePath();
 }
