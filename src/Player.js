@@ -7,7 +7,7 @@ export default class Player {
   constructor({ position = new Vector(0,0), radius = 10, rotation = 180, moveSpeed = 1, turnSpeed = 90, maxSpeed = 1, world = {}} = {}){
     this.position = position;
     this.radius = radius;
-    this.rotation = rotation;
+    this._rotation = rotation;
     this.moveSpeed = moveSpeed;
     this.turnSpeed = turnSpeed;
     this.maxSpeed = maxSpeed;
@@ -16,7 +16,52 @@ export default class Player {
     this.world = world;
     this.activeSector = 0;
     this.keyboardListener = new KeyboardListener();
+    this.angleCos = 0;
+    this.angleSin = 0;
+    this.calculateAngle(rotation);
   }
+
+  set rotation(rotation){
+    if(rotation > 360){
+      this._rotation = rotation - 360;
+    }
+    else if(rotation < 0){
+      this._rotation = rotation + 360;
+    }
+    else {
+      this._rotation = rotation;
+    }
+    this.calculateAngle(rotation);
+  }
+
+  get rotation(){
+    return this._rotation;
+  }
+
+  calculateAngle(rotation){
+    const radians = toRadians(rotation);
+    this.angleCos = Math.cos(radians);
+    this.angleSin = Math.sin(radians);
+  }
+
+  // const radians = toRadians(player.rotation);
+  // const angleCos = Math.cos(radians);
+  // const angleSin = Math.sin(radians);
+
+//   set rotation(rotation:number){
+//     if(rotation > 360){
+//         this._rotation = rotation - 360;
+//     }
+//     else if(rotation < 0){
+//         this._rotation = rotation + 360;
+//     }
+//     else {
+//         this._rotation = rotation;
+//     }
+//     const angle = toRadians(rotation);
+//     this.angleCos = Math.cos(angle);
+//     this.angleSin = Math.sin(angle);
+// }
 
   applyFriction(){
     if(this.velocity.x < 0){
